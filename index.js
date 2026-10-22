@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { connectToMongoDB, disconnectFromMongoDB } from "./db.js";
 import productRoutes from "./routes/productRoutes.js"; // <-- Import product routes 
 import categoryRoutes from "./routes/categoryRoutes.js";
+import saleRoutes from "./routes/saleRoutes.js"; // <-- Import sales routes
+import analyticsRoutes from "./routes/analyticsRoutes.js"; // <-- Import analytics routes
 
 dotenv.config();
 
@@ -16,6 +18,8 @@ app.use(express.json());
 //Api endpoints
 app.use("/api/products", productRoutes); // <-- Mount product endpoint
 app.use("/api/categories", categoryRoutes); // <-- Mount category endpoint
+app.use("/api/sales", saleRoutes); // <-- Mount sales endpoint
+app.use("/api/analytics", analyticsRoutes); // <-- Mount analytics endpoint
 
 
 app.get("/api", (req, res)=> {
