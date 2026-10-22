@@ -109,4 +109,56 @@ router.patch("/:id", async (req, res) => {
     }
 });
 
+// PUT /api/products/:id - Update product
+router.put("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, sku, category, costPrice, sellingPrice, stockQuantity, lowStockThreshold } = req.body;
+        const db = getDB();
+
+        const updateDoc = {
+            $set: {
+                title,
+                sku,
+                category,
+                costPrice: Number(costPrice),
+                sellingPrice: Number(sellingPrice),
+                stockQuantity: Number(stockQuantity),
+                lowStockThreshold: Number(lowStockThreshold) || 5,
+                updatedAt: new Date(),
+            },
+        };
+
+        const result = await db.collection("products").updateOne(
+            { _id: new ObjectId(id) },
+            updateDoc
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        res.status(200).json({ success: true, message: "Product updated successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Update failed", error: error.message });
+    }
+});
+
+// DELETE /api/products/:id - Delete product
+router.delete("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = getDB();
+
+        const result = await db.collection("products").deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        res.status(200).json({ success: true, message: "Product deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Delete failed", error: error.message });
+    }
+});
+
 export default router;
