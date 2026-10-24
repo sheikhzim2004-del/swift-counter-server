@@ -1,11 +1,12 @@
 import express from "express";
 import { ObjectId } from "mongodb";
 import { getDB } from "../db.js";
+import { verifyAuth, requireRole } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// GET all products (with search and category filter)
-router.get("/", async (req, res) => {
+// GET all products (with search and category filter) - Admin ও Cashier উভয়ই দেখতে পারবে
+router.get("/", verifyAuth, async (req, res) => {
     try {
         const { search, category } = req.query;
         const db = getDB();
@@ -36,8 +37,8 @@ router.get("/", async (req, res) => {
     }
 });
 
-// POST create a new product
-router.post("/", async (req, res) => {
+// POST create a new product - শুধুমাত্র Admin পারবে
+router.post("/", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
         const { title, sku, category, costPrice, sellingPrice, stockQuantity, lowStockThreshold } = req.body;
 
@@ -79,8 +80,8 @@ router.post("/", async (req, res) => {
     }
 });
 
-// PATCH update stock or product info
-router.patch("/:id", async (req, res) => {
+// PATCH update stock or product info - শুধুমাত্র Admin পারবে
+router.patch("/:id", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
         const { id } = req.params;
         const { title, costPrice, sellingPrice, stockQuantity, lowStockThreshold, category } = req.body;
@@ -109,8 +110,8 @@ router.patch("/:id", async (req, res) => {
     }
 });
 
-// PUT /api/products/:id - Update product
-router.put("/:id", async (req, res) => {
+// PUT /api/products/:id - Update product - শুধুমাত্র Admin পারবে
+router.put("/:id", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
         const { id } = req.params;
         const { title, sku, category, costPrice, sellingPrice, stockQuantity, lowStockThreshold } = req.body;
@@ -118,9 +119,9 @@ router.put("/:id", async (req, res) => {
 
         const updateDoc = {
             $set: {
-                title,
-                sku,
-                category,
+                title: title?.trim(),
+                sku: sku?.trim().toUpperCase(),
+                category: category?.trim(),
                 costPrice: Number(costPrice),
                 sellingPrice: Number(sellingPrice),
                 stockQuantity: Number(stockQuantity),
@@ -144,8 +145,8 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-// DELETE /api/products/:id - Delete product
-router.delete("/:id", async (req, res) => {
+// DELETE /api/products/:id - Delete product - শুধুমাত্র Admin পারবে
+router.delete("/:id", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
         const { id } = req.params;
         const db = getDB();

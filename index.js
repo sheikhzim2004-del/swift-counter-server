@@ -6,6 +6,7 @@ import productRoutes from "./routes/productRoutes.js"; // <-- Import product rou
 import categoryRoutes from "./routes/categoryRoutes.js";
 import saleRoutes from "./routes/saleRoutes.js"; // <-- Import sales routes
 import analyticsRoutes from "./routes/analyticsRoutes.js"; // <-- Import analytics routes
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use("/api/products", productRoutes); // <-- Mount product endpoint
 app.use("/api/categories", categoryRoutes); // <-- Mount category endpoint
 app.use("/api/sales", saleRoutes); // <-- Mount sales endpoint
 app.use("/api/analytics", analyticsRoutes); // <-- Mount analytics endpoint
+app.use("/api/auth", authRoutes); // <-- Mount auth endpoint
 
 
 app.get("/api", (req, res)=> {

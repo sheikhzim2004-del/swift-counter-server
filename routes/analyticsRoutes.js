@@ -8,26 +8,76 @@ router.get("/dashboard", async (req, res) => {
     try {
         const db = getDB();
 
-        // 1. Total Revenue & Total Orders
-        const sales = await db.collection("sales").find({}).toArray();
-        const totalRevenue = sales.reduce((sum, item) => sum + (item.total || 0), 0);
-        const totalOrders = sales.length;
-
-        // 2. Today's Sales
+        // আজকের শুরুর এবং শেষের টাইমস্ট্যাম্প (UTC / Local safe)
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
 
-        const todaySales = sales.filter(
-            (item) => new Date(item.createdAt) >= startOfToday
-        );
-        const todayRevenue = todaySales.reduce((sum, item) => sum + (item.total || 0), 0);
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
 
-        // 3. Low Stock Items count (Stock <= 5)
+        // 1. Aggregation: আজকের ও সর্বমোট রেভিনিউ এবং অর্ডার সংখ্যা
+        const revenueStats = await db.collection("sales").aggregate([
+            {
+                $facet: {
+                    totalStats: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalRevenue: { $sum: "$total" },
+                                totalOrders: { $sum: 1 },
+                            },
+                        },
+                    ],
+                    todayStats: [
+                        {
+                            $match: {
+                                createdAt: { $gte: startOfToday, $lte: endOfToday },
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: null,
+                                todayRevenue: { $sum: "$total" },
+                                todayOrders: { $sum: 1 },
+                            },
+                        },
+                    ],
+                },
+            },
+        ]).toArray();
+
+        const totalRevenue = revenueStats[0]?.totalStats[0]?.totalRevenue || 0;
+        const totalOrders = revenueStats[0]?.totalStats[0]?.totalOrders || 0;
+        const todayRevenue = revenueStats[0]?.todayStats[0]?.todayRevenue || 0;
+        const todayOrders = revenueStats[0]?.todayStats[0]?.todayOrders || 0;
+
+        // 2. Dynamic Low Stock Count (প্রতিটি প্রোডাক্টের নিজস্ব threshold অনুযায়ী)
         const lowStockCount = await db.collection("products").countDocuments({
-            stockQuantity: { $lte: 5 },
+            $expr: {
+                $lte: [
+                    "$stockQuantity",
+                    { $ifNull: ["$lowStockThreshold", 5] },
+                ],
+            },
         });
 
-        // 4. Recent 5 Invoices
+        // 3. Aggregation: Top 5 Selling Items (রিকোয়ারমেন্ট অনুযায়ী)
+        const topSellingProducts = await db.collection("sales").aggregate([
+            { $unwind: "$items" },
+            {
+                $group: {
+                    _id: "$items.productId",
+                    title: { $first: "$items.title" },
+                    sku: { $first: "$items.sku" },
+                    totalSold: { $sum: "$items.quantity" },
+                    revenueGenerated: { $sum: "$items.total" },
+                },
+            },
+            { $sort: { totalSold: -1 } },
+            { $limit: 5 },
+        ]).toArray();
+
+        // 4. সাম্প্রতিক ৫টি সেলস রেকর্ড
         const recentSales = await db
             .collection("sales")
             .find({})
@@ -41,8 +91,9 @@ router.get("/dashboard", async (req, res) => {
                 totalRevenue,
                 todayRevenue,
                 totalOrders,
-                todayOrders: todaySales.length,
+                todayOrders,
                 lowStockCount,
+                topSellingProducts,
                 recentSales,
             },
         });
