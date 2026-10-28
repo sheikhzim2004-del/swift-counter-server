@@ -1,10 +1,12 @@
 import express from "express";
 import { getDB } from "../db.js";
+import { verifyAuth, requireRole } from "../middleware/authMiddleware.js"; // 👈 মিডলওয়্যার ইমপোর্ট করা হলো
 
 const router = express.Router();
 
 // GET /api/analytics/dashboard
-router.get("/dashboard", async (req, res) => {
+// 👇 শুধুমাত্র লগইন করা Admin এই রাউট থেকে ডেটা পাবে 👇
+router.get("/dashboard", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
         const db = getDB();
 
