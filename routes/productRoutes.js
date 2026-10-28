@@ -80,6 +80,66 @@ router.post("/", verifyAuth, requireRole("admin"), async (req, res) => {
     }
 });
 
+
+
+//just product add korar jonno ekta route add kora holo, jekhane admin o cashier duijonai product quick add korte parbe.
+// POST /quick-add - Admin ও Cashier উভয়ই প্রোডাক্ট কুইক-অ্যাড করতে পারবে
+router.post("/quick-add", verifyAuth, async (req, res) => {
+    try {
+        const { title, sku, category, sellingPrice, stockQuantity } = req.body;
+
+        if (!title || sellingPrice === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "Title and Selling Price are required"
+            });
+        }
+
+        const db = getDB(); // 👈 getDB() কল করা হলো
+        const cleanSku = sku ? sku.trim().toUpperCase() : `SKU-${Date.now().toString().slice(-6)}`;
+
+        // SKU ডুপ্লিকেট চেক
+        const existing = await db.collection("products").findOne({ sku: cleanSku });
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: "Product with this SKU already exists"
+            });
+        }
+
+        const newProduct = {
+            title: title.trim(),
+            sku: cleanSku,
+            category: category ? category.trim() : "General",
+            costPrice: 0, // ক্যাশিয়ার কস্ট প্রাইস জানে না, তাই ডিফল্ট ০
+            sellingPrice: Number(sellingPrice),
+            stockQuantity: Number(stockQuantity) || 1,
+            lowStockThreshold: 5,
+            status: "Available",
+            addedByRole: req.user?.role || "cashier",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        const result = await db.collection("products").insertOne(newProduct); // 👈 db.collection("products") ব্যবহার করা হলো
+
+        res.status(201).json({
+            success: true,
+            message: "Product added successfully",
+            data: { _id: result.insertedId, ...newProduct },
+        });
+    } catch (error) {
+        console.error("Quick add error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to create product",
+            error: error.message
+        });
+    }
+});
+
+
+
 // PATCH update stock or product info - শুধুমাত্র Admin পারবে
 router.patch("/:id", verifyAuth, requireRole("admin"), async (req, res) => {
     try {
